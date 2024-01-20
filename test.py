@@ -2,7 +2,7 @@ from dlog import *
 
 l = Logger(line_length=120, time_format="local-%H:%M:%S", compact=True)
 
-my_data = {'a': 'xyz', 'b': 123, 'c': ['uvw '*100]*10,
+my_data = {'a': 'xyz', 'b': 1000000, 'c': ['uvw '*100]*10,
            'd': [_ for _ in range(1000)]}
 
 l.info('hello-world'*40 + " hi", my_data, color=MAG, divider=MAG,
@@ -29,5 +29,4 @@ try:
 except Exception as e:
     l.info(exc=e)
 x = {"a": "b", "c": [_ for _ in range(100)]}
-
 l.json(x, msg="json format:")  # json format for quick copying 

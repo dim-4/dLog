@@ -16,6 +16,11 @@ from .styles import (STYLE_0)
 
 class Logger:
     INFO, DEBUG, WARNING, ERROR, CRITICAL = INF, DEB, WRN, ERR, CRI
+    (RED, GRN, BLU, YEL, CYN, 
+     MAG, LGR, DGR, WHT,
+     BLD, ITL, UND, STR, RST) = (RED, GRN, BLU, YEL, CYN, 
+                                 MAG, LGR, DGR, WHT,
+                                 BLD, ITL, UND, STR, RST)
     STYLE_DEFAULT = STYLE_0
     STYLE_0 = STYLE_0
     TIME_FORMAT_CLOCK = "%H:%M:%S"
@@ -201,6 +206,8 @@ class Logger:
         param: `show_metadata` (bool):
             - If False, metadata will not be printed (levels, time, filename...)
         """
+        if 'div' in kwargs and not divider: divider = kwargs.pop('div')
+        if 'c' in kwargs and not color: color = kwargs.pop('c')     
         message = str(message)
         color = color or ""
         if data is not NoData:
@@ -269,6 +276,7 @@ class Logger:
                 package is using instance of your logger.
         """
         if 'div' in kwargs and not divider: divider = kwargs.pop('div')
+        if 'c' in kwargs and not color: color = kwargs.pop('c')     
         caller_frame = getframeinfo(stack()[1][0])
         self.log(message=message,
                  data=data,
@@ -318,6 +326,7 @@ class Logger:
                 package is using instance of your logger.
         """
         if 'div' in kwargs and not divider: divider = kwargs.pop('div')
+        if 'c' in kwargs and not color: color = kwargs.pop('c')     
         caller_frame = getframeinfo(stack()[1][0])
         self.log(message=message,
                  data=data,
@@ -365,6 +374,7 @@ class Logger:
         params passed as kwargs will be stored in the record.
         """
         if 'div' in kwargs and not divider: divider = kwargs.pop('div')
+        if 'c' in kwargs and not color: color = kwargs.pop('c')     
         caller_frame = getframeinfo(stack()[1][0])
         self.log(message=message,
                  data=data,
@@ -410,6 +420,7 @@ class Logger:
                 package is using instance of your logger.
         """
         if 'div' in kwargs and not divider: divider = kwargs.pop('div')
+        if 'c' in kwargs and not color: color = kwargs.pop('c')     
         caller_frame = getframeinfo(stack()[1][0])
         self.log(message=message,
                  data=data,
@@ -459,6 +470,7 @@ class Logger:
                 package is using instance of your logger.
         """
         if 'div' in kwargs and not divider: divider = kwargs.pop('div')
+        if 'c' in kwargs and not color: color = kwargs.pop('c')     
         caller_frame = getframeinfo(stack()[1][0])
         self.log(message=message,
                  data=data,

@@ -16,11 +16,11 @@ from .styles import (STYLE_0)
 
 class Logger:
     INFO, DEBUG, WARNING, ERROR, CRITICAL = INF, DEB, WRN, ERR, CRI
-    (RED, GRN, BLU, YEL, CYN, 
-     MAG, LGR, DGR, WHT,
-     BLD, ITL, UND, STR, RST) = (RED, GRN, BLU, YEL, CYN, 
-                                 MAG, LGR, DGR, WHT,
-                                 BLD, ITL, UND, STR, RST)
+    from .values import (RED, GREEN, BLUE, YELLOW, CYAN, MAGENTA,
+                         LIGHT_GRAY, DARK_GRAY, WHITE,
+                         GRN, BLU, YLW, YEL, CYN, MAG, LGR, DGR, WHT,
+                         BOLD, ITALIC, UNDERLINE, STRIKETHROUGH,
+                         BLD, ITL, UND, STR, RST, ENDC)
     STYLE_DEFAULT = STYLE_0
     STYLE_0 = STYLE_0
     TIME_FORMAT_CLOCK = "%H:%M:%S"

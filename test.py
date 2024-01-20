@@ -30,3 +30,5 @@ except Exception as e:
     l.info(exc=e)
 x = {"a": "b", "c": [_ for _ in range(100)]}
 l.json(x, msg="json format:")  # json format for quick copying 
+
+l.MAGENTA

@@ -23,7 +23,8 @@ STYLE_0 = {
         "log_level": 11,
     },
     "time_format": "%Y-%b-%d %H:%M:%S",
-    "level_colors": {INF: CYN, DEB: GRN+BLD, WRN: YEL+ITL, ERR: RED, CRI: RED+BLD},
+    "level_colors": {INF: CYN, DEB: GRN+BLD, WRN: YEL+ITL, 
+                     ERR: RED, CRI: RED+BLD},
     
     # data_style
     "data_indent": 1,  # pformat indent
@@ -34,7 +35,7 @@ STYLE_0 = {
     "data_colorize": True,  # colorized data structures
     "data_color_schema": {
         "string_schema": {'quotes': RED+ITL, 'string': DGR},
-        "struct_colors": [BLD+CYN, BLD+GRN, BLD+BLD, 
+        "struct_colors": [BLD+CYN, BLD+GRN, BLD+YEL,
                           BLD+MAG, BLD+BLU, BLD+RED],
         "symbol_colors": {':': CYN, ',': CYN}
     },

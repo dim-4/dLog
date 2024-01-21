@@ -6,7 +6,7 @@ from multiprocessing import Process, Lock
 from dlog import *
 
 def bar(lock, process_id):
-    filename = f'./test_data/{l.logger_uid}.log'
+    filename = f'./test_data/demo.log'
     l(f"Process {process_id} started ! Logger id: {l.logger_uid}.", 
       color = [RED, GRN, BLU][process_id%3], lock=lock, filename=filename)
     sleep(0.4)

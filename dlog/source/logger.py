@@ -334,7 +334,7 @@ class Logger:
         """
         if 'div' in kwargs and not divider: divider = kwargs.pop('div')
         if 'c' in kwargs and not color: color = kwargs.pop('c')     
-        caller_frame = getframeinfo(stack()[1][0])
+        caller_frame = getframeinfo(stack()[1+kwargs.get("f_up", 0)][0])
         self.log(message=message,
                  data=data,
                  level=INF,
@@ -354,7 +354,7 @@ class Logger:
     
     def __call__(self, *args, **kwargs):
         """ alias for `info` """
-        self.info(*args, **kwargs)
+        self.info(*args, f_up=1, **kwargs)
     
     def debug(self,
               message:str="",
@@ -403,7 +403,7 @@ class Logger:
         """
         if 'div' in kwargs and not divider: divider = kwargs.pop('div')
         if 'c' in kwargs and not color: color = kwargs.pop('c')     
-        caller_frame = getframeinfo(stack()[1][0])
+        caller_frame = getframeinfo(stack()[1+kwargs.get("f_up", 0)][0])
         self.log(message=message,
                  data=data,
                  level=DEB,
@@ -468,7 +468,7 @@ class Logger:
         """
         if 'div' in kwargs and not divider: divider = kwargs.pop('div')
         if 'c' in kwargs and not color: color = kwargs.pop('c')     
-        caller_frame = getframeinfo(stack()[1][0])
+        caller_frame = getframeinfo(stack()[1+kwargs.get("f_up", 0)][0])
         self.log(message=message,
                  data=data,
                  level=WRN,
@@ -485,7 +485,11 @@ class Logger:
                  filename=filename,
                  ignore_logfile_headers=ignore_logfile_headers,
                  **kwargs)
-        
+    
+    def warn(self, *args, **kwargs):
+        """ alias for `warning` """
+        self.warning(*args, f_up=1, **kwargs)
+                
     def error(self,
               message:str="",
               data:Any=NoData,
@@ -533,7 +537,7 @@ class Logger:
         """
         if 'div' in kwargs and not divider: divider = kwargs.pop('div')
         if 'c' in kwargs and not color: color = kwargs.pop('c')     
-        caller_frame = getframeinfo(stack()[1][0])
+        caller_frame = getframeinfo(stack()[1+kwargs.get("f_up", 0)][0])
         self.log(message=message,
                  data=data,
                  level=ERR,
@@ -551,10 +555,7 @@ class Logger:
                  ignore_logfile_headers=ignore_logfile_headers,
                  **kwargs)
 
-    def warn(self, *args, **kwargs):
-        """ alias for `warning` """
-        self.warning(*args, **kwargs)
-        
+
     def critical(self,
                  message:str="",
                  data:Any=NoData,
@@ -602,7 +603,7 @@ class Logger:
         """
         if 'div' in kwargs and not divider: divider = kwargs.pop('div')
         if 'c' in kwargs and not color: color = kwargs.pop('c')     
-        caller_frame = getframeinfo(stack()[1][0])
+        caller_frame = getframeinfo(stack()[1+kwargs.get("f_up", 0)][0])
         self.log(message=message,
                  data=data,
                  level=CRI,
@@ -622,7 +623,7 @@ class Logger:
     
     def crit(self, *args, **kwargs):
         """ alias for `critical` """
-        self.critical(*args, **kwargs)
+        self.critical(*args, f_up=1, **kwargs)
     
     def json(self, data:Any, pretty=False, color:str=None, msg:str=""):
         """ tries to convert data to json so you can copy paste """
@@ -630,13 +631,14 @@ class Logger:
             if pretty:
                 self.info(msg+ "\n" + json.dumps(data, indent=4), 
                           metadata_color_override=BLD+BLU, color=color,
-                          disable_file_writes=True)
+                          disable_file_writes=True, f_up=1)
             else:
                 self.info(msg + "\n" + json.dumps(data), 
                           metadata_color_override=BLD+BLU, color=color,
-                          disable_file_writes=True)
+                          disable_file_writes=True, f_up=1)
         except Exception as e:
-            self.error(f"Couldn't convert data to json: {e}", data=data, exc=e)
+            self.error(f"Couldn't convert data to json: {e}", data=data, exc=e,
+                       f_up=1)
 
 
     def format_record(self, record:Record, force_colorless:bool=False):

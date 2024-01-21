@@ -270,4 +270,4 @@ In summary, these shortcuts (`logger()`, `crit()`, etc.) provide a quick and eff
 
 
 
-###### README by GPT-4 based on `logger.py`
+###### README by GPT-4 based on `logger.py`. May be inaccurate or incomplete.

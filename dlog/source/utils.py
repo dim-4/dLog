@@ -78,3 +78,8 @@ def fill(string:str, length:int, fill_chars:str=" ") -> str:
     """ returns string filled with `fill_chars` to specified `length` """
     if len(string) >= length: return string
     return string + fill_chars * ((length - len(string)) // len(fill_chars))
+
+def write_to_file(record:str, filename:str):
+    with open(filename, "a") as f:
+        f.write(record + "\n")
+

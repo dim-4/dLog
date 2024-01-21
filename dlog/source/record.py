@@ -22,6 +22,7 @@ class Record:
                  colorless:bool,
                  show_metadata:bool,
                  metadata_color_override:bool,
+                 filename:str,
                  **kwargs
     ):
         self.time:float = time()
@@ -43,6 +44,7 @@ class Record:
         self.colorless:bool = colorless
         self.show_metadata:bool = show_metadata
         self.metadata_color_override:bool = metadata_color_override
+        self.filename = filename
         self.kwargs:dict = kwargs
     
     def to_dict(self):
@@ -66,6 +68,7 @@ class Record:
             "colorless": self.colorless,
             "show_metadata": self.show_metadata,
             "metadata_color_override": self.metadata_color_override,
+            "filename": self.filename,
             "kwargs": self.kwargs,
         }
 

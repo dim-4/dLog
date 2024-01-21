@@ -1,8 +1,12 @@
 import json
+import multiprocessing
+import threading
 from inspect import getframeinfo, stack
 from time import time
 from pprint import pformat
-from threading import Lock
+from threading import Lock as ThreadLock
+from multiprocessing import Lock as ProcessLock
+from multiprocessing.synchronize import Lock as ProcessLockType
 from typing import Any
 
 from . import utils, values
@@ -44,6 +48,9 @@ class Logger:
                  wrap_log_message:bool=None,
                  data_max_size:int=None,
                  max_logs_to_store:int=-1,
+                 logger_uid:str=None,
+                 filename:str=None,
+                 prepend_logger_uid_to_filename:bool=False,
                  **kwargs
     ) -> None:
         """
@@ -70,6 +77,13 @@ class Logger:
         param: `max_logs_to_store` (int):
             - The maximum number of logs to store in memory.
             - If -1, all logs will be stored.
+        
+        param: `prepend_logger_uid_to_filename` (bool):
+            - If True, the logger uid will be prepended to the filename if logs
+            are written in files.
+        
+        param: `filename` (str):
+            - If passed, logs will be written to the specified file.
 
         param: `style` (dict):
             ```python 
@@ -131,7 +145,7 @@ class Logger:
         """
         self.init_time:float = time()
         self.logs:list[Record] = []
-        self.logger_uid:str = utils.uid()
+        self.logger_uid:str = logger_uid or utils.uid()
         self.log_count:int = 0
 
         style.update({**Logger.STYLE_DEFAULT, **style, **kwargs})  # override
@@ -168,6 +182,7 @@ class Logger:
         if time_format and time_format.startswith("local-"):
             time_format = time_format.replace("local-", "")
             time_local = True
+        self.style['timezone'] = 'local' if time_local else 'utc'
         self.time_format:str = time_format or style["time_format"]
         self.time_local:bool = time_local
         self.level_colors:dict = style["level_colors"]
@@ -182,9 +197,11 @@ class Logger:
         self.data_color_schema:dict = style["data_color_schema"]
         self.data_max_size:int = data_max_size or style["data_max_size"]
         self.max_logs_to_store:int = max_logs_to_store
+        self.filename:str = filename
+        self.prepend_logger_uid_to_filename:bool = prepend_logger_uid_to_filename
 
-        self._lock = Lock()
-
+        self._thread_lock:threading.Lock = ThreadLock()
+    
     def log(self, 
             message:str="",
             data:Any=NoData, 
@@ -198,6 +215,9 @@ class Logger:
             colorless:bool=False,
             show_metadata:bool=True,
             metadata_color_override:str=None,
+            processing_lock:ProcessLockType=None,
+            filename:str=None,
+            ignore_logfile_headers:bool=False,
             **kwargs):
         """  
         param: `colorless` (bool):
@@ -207,7 +227,8 @@ class Logger:
             - If False, metadata will not be printed (levels, time, filename...)
         """
         if 'div' in kwargs and not divider: divider = kwargs.pop('div')
-        if 'c' in kwargs and not color: color = kwargs.pop('c')     
+        if 'c' in kwargs and not color: color = kwargs.pop('c')
+        processing_lock = processing_lock or kwargs.get('lock')
         message = str(message)
         color = color or ""
         if data is not NoData:
@@ -217,6 +238,14 @@ class Logger:
                 message += (f'{RED+BLD}NOTE: {YEL}the data was too large '
                         f'to display so it was trimmed.{color or RST}')
         # generate record
+        filename = filename or self.filename
+        if filename and self.prepend_logger_uid_to_filename:
+            # split with "/" or "\"
+            filename = filename.replace("\\", "/")
+            folders = filename.split("/")
+            # prepend logger uid to filename and join everything
+            filename = f"{"/".join(folders[:-1])}/{self.logger_uid}.{folders[-1]}"
+
         caller_frame = caller_frame or getframeinfo(stack()[1][0])
         record = Record(message=message,
                         data=data,
@@ -235,8 +264,11 @@ class Logger:
                         colorless=colorless,
                         show_metadata=show_metadata,
                         metadata_color_override=metadata_color_override,
+                        filename=filename,
                         **kwargs)
-        with self._lock:
+        with self._thread_lock:
+            if processing_lock:
+                processing_lock.acquire()
             self.log_count += 1
             self.logs.append(record)
             if self.max_logs_to_store > 0:
@@ -245,6 +277,15 @@ class Logger:
             if display:
                 record_str = self.format_record(record)
                 print(record_str)
+            
+            if filename and not kwargs.get('disable_file_writes'):
+                # if it's the first log, write the header
+                if self.log_count == 1 and not ignore_logfile_headers:
+                    utils.write_to_file(self._header(), filename)
+                utils.write_to_file(self.format_record(record, True), filename)
+
+            if processing_lock:
+                processing_lock.release()
     
     def info(self,
              message:str="",
@@ -257,6 +298,9 @@ class Logger:
              colorless:bool=False,
              show_metadata:bool=True,
              metadata_color_override:str=None,
+             processing_lock:ProcessLockType=None,
+             filename:str=None,
+             ignore_logfile_headers:bool=False,
              **kwargs):
         """
         param: `display` (bool):
@@ -274,6 +318,19 @@ class Logger:
         param: `source_name` (str):
             - If passed, the source name will be printed. useful if custom
                 package is using instance of your logger.
+        
+        param: `processing_lock` (multiprocessing.Lock):
+            - If loggers will be used in multiple processes, you must pass
+            a multiprocessing lock that will be shared by the logger instances.
+            `from multiprocessing import Lock; lock = Lock()`
+        
+        param: `filename` (str):
+            - If passed, logs will be written to the specified file.
+        
+        param: `ignore_logfile_headers` (bool):
+            - If True, the header will not be written to the file.
+
+        params passed as kwargs will be stored in the record.
         """
         if 'div' in kwargs and not divider: divider = kwargs.pop('div')
         if 'c' in kwargs and not color: color = kwargs.pop('c')     
@@ -290,6 +347,9 @@ class Logger:
                  colorless=colorless,
                  show_metadata=show_metadata,
                  metadata_color_override=metadata_color_override,
+                 processing_lock=processing_lock,
+                 filename=filename,
+                 ignore_logfile_headers=ignore_logfile_headers,
                  **kwargs)
     
     def __call__(self, *args, **kwargs):
@@ -307,6 +367,9 @@ class Logger:
               colorless:bool=False,
               show_metadata:bool=True,
               metadata_color_override:str=None,
+              processing_lock:ProcessLockType=None,
+              filename:str=None,
+              ignore_logfile_headers:bool=False,
               **kwargs):
         """
         param: `display` (bool):
@@ -324,6 +387,19 @@ class Logger:
         param: `source_name` (str):
             - If passed, the source name will be printed. useful if custom
                 package is using instance of your logger.
+        
+        param: `processing_lock` (multiprocessing.Lock):
+            - If loggers will be used in multiple processes, you must pass
+            a multiprocessing lock that will be shared by the logger instances.
+            `from multiprocessing import Lock; lock = Lock()`
+        
+        param: `filename` (str):
+            - If passed, logs will be written to the specified file.
+
+        param: `ignore_logfile_headers` (bool):
+            - If True, the header will not be written to the file.
+
+        params passed as kwargs will be stored in the record.
         """
         if 'div' in kwargs and not divider: divider = kwargs.pop('div')
         if 'c' in kwargs and not color: color = kwargs.pop('c')     
@@ -340,6 +416,9 @@ class Logger:
                  colorless=colorless,
                  show_metadata=show_metadata,
                  metadata_color_override=metadata_color_override,
+                 processing_lock=processing_lock,
+                 filename=filename,
+                 ignore_logfile_headers=ignore_logfile_headers,
                  **kwargs)
         
     def warning(self,
@@ -353,6 +432,9 @@ class Logger:
                 colorless:bool=False,
                 show_metadata:bool=True,
                 metadata_color_override:str=None,
+                processing_lock:ProcessLockType=None,
+                filename:str=None,
+                ignore_logfile_headers:bool=False,
                 **kwargs):
         """
         param: `display` (bool):
@@ -370,6 +452,17 @@ class Logger:
         param: `source_name` (str):
             - If passed, the source name will be printed. useful if custom
                 package is using instance of your logger.
+        
+        param: `processing_lock` (multiprocessing.Lock):
+            - If loggers will be used in multiple processes, you must pass
+            a multiprocessing lock that will be shared by the logger instances.
+            `from multiprocessing import Lock; lock = Lock()`
+
+        param: `filename` (str):
+            - If passed, logs will be written to the specified file.
+
+        param: `ignore_logfile_headers` (bool):
+            - If True, the header will not be written to the file.
 
         params passed as kwargs will be stored in the record.
         """
@@ -388,6 +481,9 @@ class Logger:
                  colorless=colorless,
                  show_metadata=show_metadata,
                  metadata_color_override=metadata_color_override,
+                 processing_lock=processing_lock,
+                 filename=filename,
+                 ignore_logfile_headers=ignore_logfile_headers,
                  **kwargs)
         
     def error(self,
@@ -401,6 +497,9 @@ class Logger:
               colorless:bool=False,
               show_metadata:bool=True,
               metadata_color_override:str=None,
+              processing_lock:ProcessLockType=None,
+              filename:str=None,
+              ignore_logfile_headers:bool=False,
               **kwargs):
         """
         param: `display` (bool):
@@ -418,6 +517,19 @@ class Logger:
         param: `source_name` (str):
             - If passed, the source name will be printed. useful if custom
                 package is using instance of your logger.
+        
+        param: `processing_lock` (multiprocessing.Lock):
+            - If loggers will be used in multiple processes, you must pass
+            a multiprocessing lock that will be shared by the logger instances.
+            `from multiprocessing import Lock; lock = Lock()`
+        
+        param: `filename` (str):
+            - If passed, logs will be written to the specified file.
+
+        param: `ignore_logfile_headers` (bool):
+            - If True, the header will not be written to the file.
+
+        params passed as kwargs will be stored in the record.
         """
         if 'div' in kwargs and not divider: divider = kwargs.pop('div')
         if 'c' in kwargs and not color: color = kwargs.pop('c')     
@@ -434,6 +546,9 @@ class Logger:
                  colorless=colorless,
                  show_metadata=show_metadata,
                  metadata_color_override=metadata_color_override,
+                 processing_lock=processing_lock,
+                 filename=filename,
+                 ignore_logfile_headers=ignore_logfile_headers,
                  **kwargs)
 
     def warn(self, *args, **kwargs):
@@ -451,6 +566,9 @@ class Logger:
                  colorless:bool=False,
                  show_metadata:bool=True,
                  metadata_color_override:str=None,
+                 processing_lock:ProcessLockType=None,
+                 filename:str=None,
+                 ignore_logfile_headers:bool=False,
                  **kwargs):
         """
         param: `display` (bool):
@@ -468,6 +586,19 @@ class Logger:
         param: `source_name` (str):
             - If passed, the source name will be printed. useful if custom
                 package is using instance of your logger.
+            
+        param: `processing_lock` (multiprocessing.Lock):
+            - If loggers will be used in multiple processes, you must pass
+            a multiprocessing lock that will be shared by the logger instances.
+            `from multiprocessing import Lock; lock = Lock()`
+        
+        param: `filename` (str):
+            - If passed, logs will be written to the specified file.
+
+        param: `ignore_logfile_headers` (bool):
+            - If True, the header will not be written to the file.
+
+        params passed as kwargs will be stored in the record.
         """
         if 'div' in kwargs and not divider: divider = kwargs.pop('div')
         if 'c' in kwargs and not color: color = kwargs.pop('c')     
@@ -484,6 +615,9 @@ class Logger:
                  colorless=colorless,
                  show_metadata=show_metadata,
                  metadata_color_override=metadata_color_override,
+                 processing_lock=processing_lock,
+                 filename=filename,
+                 ignore_logfile_headers=ignore_logfile_headers,
                  **kwargs)
     
     def crit(self, *args, **kwargs):
@@ -495,15 +629,17 @@ class Logger:
         try:
             if pretty:
                 self.info(msg+ "\n" + json.dumps(data, indent=4), 
-                          metadata_color_override=BLD+BLU, color=color)
+                          metadata_color_override=BLD+BLU, color=color,
+                          disable_file_writes=True)
             else:
                 self.info(msg + "\n" + json.dumps(data), 
-                          metadata_color_override=BLD+BLU, color=color)
+                          metadata_color_override=BLD+BLU, color=color,
+                          disable_file_writes=True)
         except Exception as e:
             self.error(f"Couldn't convert data to json: {e}", data=data, exc=e)
 
 
-    def format_record(self, record:Record):
+    def format_record(self, record:Record, force_colorless:bool=False):
 
         def _get_space(param_name):
             if self.compact_labels: return 0
@@ -514,6 +650,7 @@ class Logger:
             return filename.split("/")[-1]
         
         def _colors_allowed():
+            if force_colorless: return False
             return not record.colorless and self.colored
 
         def get_log_number():
@@ -719,3 +856,12 @@ class Logger:
             else:
                 result.append(c)
         return ''.join(result)
+
+    def _header(self):
+        """ returns string header for log file """
+        return (f"{'-'*80}\n"
+                f"{' '*((80-len(self.name) - 6)//2)}dLog: {self.name}\n"
+                f'Logger UID: "{self.logger_uid}". '
+                f"Created at: {int(self.init_time)}.\n"
+                f"{self.style}\n"
+                f"{'-'*80}\n")

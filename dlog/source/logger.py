@@ -276,7 +276,8 @@ class Logger:
                     self.logs.pop(0)
             if display:
                 record_str = self.format_record(record)
-                print(record_str)
+                print(record_str, end=kwargs.get('end') or "\n",
+                      flush=kwargs.get('flush') or False)
             
             if filename and not kwargs.get('disable_file_writes'):
                 # if it's the first log, write the header

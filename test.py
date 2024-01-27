@@ -34,5 +34,5 @@ l = Logger(line_length=120, time_format="local-%H:%M:%S", compact=True)
 # l.MAGENTA
 
 x = {"a": ({"X": 1, "Y": 2}, {"X": 3, "Y": 4}, {"X": [6, 7], "Y": [8, 9]})}
-l.info(data=x)
+l.info(data=x, end="\n")
 

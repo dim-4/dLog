@@ -5,3 +5,4 @@ from .source.values import (RED, GREEN, BLUE, YELLOW, CYAN, MAGENTA,
                             GRN, BLU, YLW, YEL, CYN, MAG, LGR, DGR, WHT,
                             BOLD, ITALIC, UNDERLINE, STRIKETHROUGH,
                             BLD, ITL, UND, STR, RST, ENDC)
+log = Logger("root")
